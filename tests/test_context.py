@@ -8,6 +8,11 @@ import numpy as np
 import polars as pl
 import pytest
 
+from polymbappe.context.adjuster import (
+    ContextualAdjusterConfig,
+    _GROUP_TOGGLE,
+    _coverage_gate,
+)
 from polymbappe.context.cohesion import build_cohesion_features, club_cluster_index
 from polymbappe.context.draw_pressure import (
     draw_pressure_features,
@@ -200,3 +205,36 @@ def test_score_text_vader_graceful() -> None:
     # Returns a float in [-1, 1] whether or not vader is installed.
     val = score_text_vader(["great win", "terrible loss"])
     assert -1.0 <= val <= 1.0
+
+
+# -- adjuster toggles and coverage gate ----------------------------------------
+
+def test_new_group_toggles_registered():
+    assert "season_load" in _GROUP_TOGGLE
+    assert "travel" in _GROUP_TOGGLE
+    assert _GROUP_TOGGLE["season_load"] == "toggle_season_load"
+    assert _GROUP_TOGGLE["travel"] == "toggle_travel"
+
+
+def test_config_has_new_toggles():
+    cfg = ContextualAdjusterConfig()
+    assert cfg.toggle_ppda is True
+    assert cfg.toggle_season_load is True
+    assert cfg.toggle_travel is False  # default off
+
+
+def test_coverage_gate_drops_sparse_group():
+    df = pl.DataFrame({
+        "home_ppda": [None] * 50 + [8.0] * 5,
+        "away_ppda": [None] * 50 + [9.0] * 5,
+        "ppda_diff": [None] * 50 + [-1.0] * 5,
+        "home_xg_overperf": [0.1] * 55,
+        "away_xg_overperf": [-0.1] * 55,
+    })
+    groups = {
+        "ppda": ["home_ppda", "away_ppda", "ppda_diff"],
+        "xg_overperformance": ["home_xg_overperf", "away_xg_overperf"],
+    }
+    kept = _coverage_gate(df, groups, threshold=0.9)
+    assert "xg_overperformance" in kept
+    assert "ppda" not in kept  # >90% null -> gated out

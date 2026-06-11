@@ -37,6 +37,8 @@ _GROUP_TOGGLE = {
     "xg_overperformance": "toggle_xg_overperformance",
     "draw_pressure": "toggle_draw_pressure",
     "sentiment": "toggle_sentiment",
+    "season_load": "toggle_season_load",
+    "travel": "toggle_travel",
 }
 
 
@@ -58,6 +60,31 @@ class ContextualAdjusterConfig:
     toggle_xg_overperformance: bool = True
     toggle_draw_pressure: bool = True
     toggle_sentiment: bool = True
+    toggle_season_load: bool = True
+    toggle_travel: bool = False
+
+
+def _coverage_gate(
+    df: pl.DataFrame,
+    feature_groups: dict[str, list[str]],
+    threshold: float = 0.9,
+) -> dict[str, list[str]]:
+    """Drop groups whose columns are >threshold fraction null (thin data)."""
+
+    kept: dict[str, list[str]] = {}
+    n = df.height
+    if n == 0:
+        return feature_groups
+    for group, cols in feature_groups.items():
+        present_cols = [c for c in cols if c in df.columns]
+        if not present_cols:
+            continue
+        null_frac = float(
+            df.select(present_cols).null_count().sum_horizontal()[0]
+        ) / (n * len(present_cols))
+        if null_frac <= threshold:
+            kept[group] = cols
+    return kept
 
 
 def apply_adjustment(base: np.ndarray, raw_adj: np.ndarray, cap: float = 0.03) -> np.ndarray:
@@ -138,7 +165,12 @@ class ContextualAdjuster:
             label_column: H/D/A label column.
         """
 
-        self.active_features = self._enabled_features()
+        enabled_groups = {
+            g: cols for g, cols in self.feature_groups.items()
+            if getattr(self.config, _GROUP_TOGGLE.get(g, ""), True)
+        }
+        gated_groups = _coverage_gate(df, enabled_groups)
+        self.active_features = [c for cols in gated_groups.values() for c in cols]
         if not self.config.enable_contextual_layer or not self.active_features:
             self._models = []
             return self
