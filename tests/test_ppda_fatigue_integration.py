@@ -197,3 +197,99 @@ def test_config_to_configs_wires_new_toggles():
     assert configs.contextual.toggle_ppda is True
     assert configs.contextual.toggle_season_load is False
     assert configs.contextual.toggle_travel is False
+
+
+import numpy as np
+from polymbappe.context.adjuster import ContextualAdjuster, ContextualAdjusterConfig
+
+
+def test_e2e_adjuster_with_ppda_and_season_load():
+    """Full flow: build features -> fit adjuster -> predict -> coverage gate."""
+    n = 60
+    rng = np.random.default_rng(42)
+
+    df = pl.DataFrame({
+        "home_xg_overperf": rng.normal(0, 0.1, n).tolist(),
+        "away_xg_overperf": rng.normal(0, 0.1, n).tolist(),
+        "draw_pressure": rng.normal(0, 0.5, n).tolist(),
+        "home_ppda": [None] * 30 + rng.normal(9, 2, 30).tolist(),
+        "away_ppda": [None] * 30 + rng.normal(10, 2, 30).tolist(),
+        "ppda_diff": [None] * 30 + rng.normal(-1, 1, 30).tolist(),
+        "home_season_load": rng.normal(0, 1, n).tolist(),
+        "away_season_load": rng.normal(0, 1, n).tolist(),
+        "home_travel_km": [0.0] * n,
+        "away_travel_km": [0.0] * n,
+        "home_fatigued": [0.0] * n,
+        "away_fatigued": [0.0] * n,
+        "label": rng.choice(["H", "D", "A"], n).tolist(),
+    })
+    base_probs = np.full((n, 3), 1 / 3)
+
+    cfg = ContextualAdjusterConfig(
+        enable_contextual_layer=True,
+        toggle_ppda=True,
+        toggle_season_load=True,
+        toggle_travel=False,
+    )
+    adjuster = ContextualAdjuster(FEATURE_GROUPS, cfg)
+    adjuster.fit(df, base_probs)
+
+    # ppda is 50% null -> coverage gate should drop it (>90% threshold not met,
+    # but 50% null means NOT dropped -- only >90% null gets dropped)
+    # Actually: 30/60 = 50% null. Threshold is 0.9. 0.5 <= 0.9 -> kept!
+    # So ppda SHOULD be in active_features since it's only 50% null.
+    assert "home_ppda" in adjuster.active_features
+    assert "away_ppda" in adjuster.active_features
+    # season_load should be active (no nulls)
+    assert "home_season_load" in adjuster.active_features
+    # travel is toggled off -> not active
+    assert "home_travel_km" not in adjuster.active_features
+
+    # Predict should not crash and produce valid probabilities
+    adjusted = adjuster.adjust(df, base_probs)
+    assert adjusted.shape == (n, 3)
+    assert np.allclose(adjusted.sum(axis=1), 1.0, atol=1e-6)
+
+
+def test_e2e_coverage_gate_drops_very_sparse_ppda():
+    """Coverage gate drops ppda when >90% null (simulating pre-2018 data)."""
+    n = 100
+    rng = np.random.default_rng(123)
+
+    # Only 5% non-null ppda -> should be gated
+    non_null_count = 5
+    df = pl.DataFrame({
+        "home_xg_overperf": rng.normal(0, 0.1, n).tolist(),
+        "away_xg_overperf": rng.normal(0, 0.1, n).tolist(),
+        "draw_pressure": rng.normal(0, 0.5, n).tolist(),
+        "home_ppda": [None] * (n - non_null_count) + rng.normal(9, 2, non_null_count).tolist(),
+        "away_ppda": [None] * (n - non_null_count) + rng.normal(10, 2, non_null_count).tolist(),
+        "ppda_diff": [None] * (n - non_null_count) + rng.normal(-1, 1, non_null_count).tolist(),
+        "home_season_load": rng.normal(0, 1, n).tolist(),
+        "away_season_load": rng.normal(0, 1, n).tolist(),
+        "home_travel_km": [0.0] * n,
+        "away_travel_km": [0.0] * n,
+        "home_fatigued": [0.0] * n,
+        "away_fatigued": [0.0] * n,
+        "label": rng.choice(["H", "D", "A"], n).tolist(),
+    })
+    base_probs = np.full((n, 3), 1 / 3)
+
+    cfg = ContextualAdjusterConfig(
+        enable_contextual_layer=True,
+        toggle_ppda=True,
+        toggle_season_load=True,
+        toggle_travel=False,
+    )
+    adjuster = ContextualAdjuster(FEATURE_GROUPS, cfg)
+    adjuster.fit(df, base_probs)
+
+    # ppda is 95% null -> coverage gate SHOULD drop it
+    assert "home_ppda" not in adjuster.active_features
+    assert "away_ppda" not in adjuster.active_features
+    # season_load still active
+    assert "home_season_load" in adjuster.active_features
+
+    adjusted = adjuster.adjust(df, base_probs)
+    assert adjusted.shape == (n, 3)
+    assert np.allclose(adjusted.sum(axis=1), 1.0, atol=1e-6)
