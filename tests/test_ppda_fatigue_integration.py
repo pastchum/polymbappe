@@ -181,3 +181,19 @@ def test_sim_context_features_matches_feature_groups():
     all_group_cols = set(c for cols in FEATURE_GROUPS.values() for c in cols)
     sim_set = set(SIM_CONTEXT_FEATURES)
     assert sim_set == all_group_cols
+
+
+from polymbappe.tune.objective import config_to_configs
+
+
+def test_config_to_configs_wires_new_toggles():
+    config = {
+        "contextual.enable_contextual_layer": True,
+        "contextual.toggle_ppda": True,
+        "contextual.toggle_season_load": False,
+        "contextual.toggle_travel": False,
+    }
+    configs = config_to_configs(config)
+    assert configs.contextual.toggle_ppda is True
+    assert configs.contextual.toggle_season_load is False
+    assert configs.contextual.toggle_travel is False

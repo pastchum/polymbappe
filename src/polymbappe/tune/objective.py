@@ -96,6 +96,9 @@ def config_to_configs(config: dict[str, Any]) -> BacktestConfigs:
             _get(config, "contextual.toggle_xg_overperformance", default=True)
         ),
         toggle_draw_pressure=bool(_get(config, "contextual.toggle_draw_pressure", default=True)),
+        toggle_ppda=bool(_get(config, "contextual.toggle_ppda", default=True)),
+        toggle_season_load=bool(_get(config, "contextual.toggle_season_load", default=True)),
+        toggle_travel=bool(_get(config, "contextual.toggle_travel", default=False)),
     )
 
     return BacktestConfigs(base=base, ensemble=ensemble, contextual=contextual)
