@@ -242,6 +242,64 @@ def ingest_team_xg(settings: Settings | None = None) -> int:
     return normalized.height
 
 
+def ingest_team_ppda(settings: Settings | None = None) -> int:
+    """Ingest team-level PPDA into the ``team_ppda`` table from ``data/raw/team_ppda.csv``.
+
+    Expects columns ``team, date, ppda`` (FBref team-match PPDA, 2018+). Skips
+    (returns 0) when the file is absent.
+    """
+
+    settings = settings or Settings()
+    local = settings.raw_data_dir / "team_ppda.csv"
+    if not local.exists():
+        logger.info("ingest.ppda.skip", reason="no data/raw/team_ppda.csv")
+        return 0
+
+    raw = pl.read_csv(io.BytesIO(local.read_bytes()))
+    required = {"team", "date", "ppda"}
+    missing = required - set(raw.columns)
+    if missing:
+        raise ValueError(f"team_ppda.csv missing columns: {sorted(missing)}")
+
+    normalized = raw.select(
+        pl.col("team").cast(pl.Utf8),
+        pl.col("date").cast(pl.Utf8).str.to_date(strict=False),
+        pl.col("ppda").cast(pl.Float64),
+    ).select(TABLE_COLUMNS[Table.TEAM_PPDA])
+    write_table(Table.TEAM_PPDA, normalized, mode="overwrite", settings=settings)
+    logger.info("ingest.ppda.stored", rows=normalized.height)
+    return normalized.height
+
+
+def ingest_season_minutes(settings: Settings | None = None) -> int:
+    """Ingest season-minutes into ``season_minutes`` from ``data/raw/season_minutes.csv``.
+
+    Expects columns ``team, tournament, season_minutes``. The season_minutes value is the
+    total expected-XI minutes in the club season preceding the tournament.
+    """
+
+    settings = settings or Settings()
+    local = settings.raw_data_dir / "season_minutes.csv"
+    if not local.exists():
+        logger.info("ingest.season_minutes.skip", reason="no data/raw/season_minutes.csv")
+        return 0
+
+    raw = pl.read_csv(io.BytesIO(local.read_bytes()))
+    required = {"team", "tournament", "season_minutes"}
+    missing = required - set(raw.columns)
+    if missing:
+        raise ValueError(f"season_minutes.csv missing columns: {sorted(missing)}")
+
+    normalized = raw.select(
+        pl.col("team").cast(pl.Utf8),
+        pl.col("tournament").cast(pl.Utf8),
+        pl.col("season_minutes").cast(pl.Float64),
+    ).select(TABLE_COLUMNS[Table.SEASON_MINUTES])
+    write_table(Table.SEASON_MINUTES, normalized, mode="overwrite", settings=settings)
+    logger.info("ingest.season_minutes.stored", rows=normalized.height)
+    return normalized.height
+
+
 def ingest_all_sources(live: bool = False, settings: Settings | None = None) -> dict[str, int]:
     """Ingest all configured upstream datasets into normalized storage.
 
@@ -268,6 +326,8 @@ def ingest_all_sources(live: bool = False, settings: Settings | None = None) -> 
         ("elo", ingest_elo, False),
         ("market_odds", ingest_market_odds, True),
         ("team_xg", ingest_team_xg, False),
+        ("team_ppda", ingest_team_ppda, False),
+        ("season_minutes", ingest_season_minutes, False),
     )
     for name, fn, takes_live in steps:
         try:
