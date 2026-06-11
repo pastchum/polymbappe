@@ -220,8 +220,19 @@ def _prepare_contextual(
             FEATURE_GROUPS,
             build_tournament_context_features,
         )
+        from polymbappe.data.store import read_table, table_exists
+        from polymbappe.data.tables import Table
 
-        context = build_tournament_context_features(matches, sorted_tournaments)
+        team_ppda = (
+            read_table(Table.TEAM_PPDA) if table_exists(Table.TEAM_PPDA) else None
+        )
+        season_minutes = (
+            read_table(Table.SEASON_MINUTES) if table_exists(Table.SEASON_MINUTES) else None
+        )
+        context = build_tournament_context_features(
+            matches, sorted_tournaments,
+            team_ppda=team_ppda, season_minutes=season_minutes,
+        )
         for name, df in per_tournament_probs.items():
             per_tournament_probs[name] = df.join(context, on="match_id", how="left")
         return True, FEATURE_GROUPS

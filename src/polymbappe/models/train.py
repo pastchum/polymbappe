@@ -201,8 +201,19 @@ def train_full_stack(
     if fit_contextual:
         try:
             from polymbappe.context.runtime import build_tournament_context_features
+            from polymbappe.data.store import read_table, table_exists
+            from polymbappe.data.tables import Table
 
-            context_features = build_tournament_context_features(matches, tournaments)
+            team_ppda_df = (
+                read_table(Table.TEAM_PPDA) if table_exists(Table.TEAM_PPDA) else None
+            )
+            season_minutes_df = (
+                read_table(Table.SEASON_MINUTES) if table_exists(Table.SEASON_MINUTES) else None
+            )
+            context_features = build_tournament_context_features(
+                matches, tournaments,
+                team_ppda=team_ppda_df, season_minutes=season_minutes_df,
+            )
             adjuster = _fit_contextual_adjuster(frame, calibration, context_features)
         except Exception as exc:  # noqa: BLE001 - contextual layer is optional, never fatal
             logger.warning("train.context_skip", error=str(exc))
