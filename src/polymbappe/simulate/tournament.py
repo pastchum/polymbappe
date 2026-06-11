@@ -520,7 +520,7 @@ def _load_context_hook(
     """
 
     from polymbappe.context.adjuster import apply_adjustment
-    from polymbappe.context.runtime import fixture_feature_row, latest_overperformance
+    from polymbappe.context.runtime import fixture_feature_row, latest_overperformance, latest_ppda, latest_season_load
     from polymbappe.data.store import read_table, table_exists
     from polymbappe.data.tables import Table
     from polymbappe.models.train import load_artifact
@@ -537,11 +537,23 @@ def _load_context_hook(
     matches = read_table(Table.MATCHES, settings)  # type: ignore[arg-type]
     team_xg = read_table(Table.TEAM_XG, settings) if table_exists(Table.TEAM_XG, settings) else None  # type: ignore[arg-type]
     overperf = latest_overperformance(matches, team_xg)
+    team_ppda = (
+        read_table(Table.TEAM_PPDA, settings)
+        if table_exists(Table.TEAM_PPDA, settings)
+        else None
+    )
+    season_minutes = (
+        read_table(Table.SEASON_MINUTES, settings)
+        if table_exists(Table.SEASON_MINUTES, settings)
+        else None
+    )
+    ppda_map = latest_ppda(matches, team_ppda)
+    sl_map = latest_season_load(season_minutes, tournament="WC2026")
     elo_map = elo or {}
 
     teams = structure.teams
     pairs = [(h, a) for h in teams for a in teams if h != a]
-    rows = [fixture_feature_row(h, a, overperf, elo_map) for h, a in pairs]
+    rows = [fixture_feature_row(h, a, overperf, elo_map, ppda=ppda_map, season_load=sl_map) for h, a in pairs]
     raw = adjuster.predict_adjustment(pl.DataFrame(rows))  # type: ignore[attr-defined]  # one batched call
     cache = {pair: raw[i] for i, pair in enumerate(pairs)}
     cap = adjuster.config.cap  # type: ignore[attr-defined]
