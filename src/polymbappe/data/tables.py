@@ -22,6 +22,8 @@ class Table(StrEnum):
     MARKET_ODDS = "market_odds"
     SQUAD_VALUATIONS = "squad_valuations"
     TEAM_XG = "team_xg"
+    TEAM_PPDA = "team_ppda"
+    SEASON_MINUTES = "season_minutes"
 
 
 #: Columns each normalized table is expected to expose. Used for empty-frame
@@ -56,6 +58,8 @@ TABLE_COLUMNS: dict[Table, tuple[str, ...]] = {
         "player_count",
     ),
     Table.TEAM_XG: ("team", "date", "xg", "xga"),
+    Table.TEAM_PPDA: ("team", "date", "ppda"),
+    Table.SEASON_MINUTES: ("team", "tournament", "season_minutes"),
 }
 
 
