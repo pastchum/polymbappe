@@ -139,7 +139,8 @@ _WIKI_SQUADS_HTML = """
       <th>Caps</th><th>Club</th></tr>
   <tr><td>1</td><td>GK</td><td><a href="/wiki/Alisson">Alisson</a></td>
       <td>(1992-10-02) 2 October 1992 (aged 29)</td><td>50</td>
-      <td><a href="/wiki/Liverpool_F.C.">Liverpool</a></td></tr>
+      <td><span class="flagicon"><a href="/wiki/England"></a></span>
+          <a href="/wiki/Liverpool_F.C.">Liverpool</a></td></tr>
   <tr><td colspan="6">Coach note spanning the whole row</td></tr>
   <tr><td>10</td><td>FW</td><td><a href="/wiki/Neymar">Neymar</a></td>
       <td>(1992-02-05) 5 February 1992 (aged 30)</td><td>120</td>

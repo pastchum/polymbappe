@@ -373,12 +373,22 @@ def _norm_heading(text: str) -> str:
 
 
 def _cell_text(cells: list, idx: int | None) -> str:
-    """Text of ``cells[idx]`` (the inner link's text if present), or ``""`` when out of range."""
+    """Meaningful text of ``cells[idx]``, or ``""`` when out of range.
+
+    Wikipedia squad cells often lead with a flag-icon anchor whose text is empty (e.g. the
+    Club cell is ``<flag link><club link>``), so the LAST non-empty, non-reference anchor is
+    taken; cells with no usable anchor fall back to their full stripped text.
+    """
 
     if idx is None or idx >= len(cells):
         return ""
-    link = cells[idx].find("a")
-    return link.get_text(strip=True) if link else cells[idx].get_text(" ", strip=True)
+    cell = cells[idx]
+    texts = [
+        t
+        for a in cell.find_all("a")
+        if (t := a.get_text(strip=True)) and not t.startswith("[")
+    ]
+    return texts[-1] if texts else cell.get_text(" ", strip=True)
 
 
 def _parse_wikipedia_squad(
@@ -525,13 +535,15 @@ def _parse_wikipedia_manager_history(
     rows: list[dict[str, object]] = []
     # Infobox managerial-career rows pair a years field with a club/team field, e.g.
     # | manageryears3 = 2018–2022 | managerclubs3 = [[England national football team|England]]
+    # The club value must capture the WHOLE wikilink (its display name follows a ``|``), so it
+    # runs to end-of-line rather than stopping at the first pipe.
     years = dict(re.findall(r"manageryears(\d*)\s*=\s*([^\n|]+)", wikitext))
-    clubs = dict(re.findall(r"managerclubs(\d*)\s*=\s*([^\n|]+)", wikitext))
+    clubs = dict(re.findall(r"managerclubs(\d*)\s*=\s*([^\n]+)", wikitext))
     for key, raw_years in years.items():
         raw_team = clubs.get(key)
         if not raw_team:
             continue
-        team = _wikilink_text(raw_team)
+        team = _clean_national_team(_wikilink_text(raw_team))
         span = re.search(r"(\d{4})\s*[–\-]\s*(\d{4})?", raw_years)
         if span is None:
             continue
@@ -559,6 +571,23 @@ def _wikilink_text(raw: str) -> str:
         inner = match.group(1)
         return inner.split("|")[-1].strip() if "|" in inner else inner.strip()
     return cleaned
+
+
+def _clean_national_team(name: str) -> str:
+    """Reduce a Wikipedia team link to the bare nation, e.g. ``France national football
+    team`` → ``France``, so it joins the ``matches`` table (canonicalized again at ingest).
+    An unpiped wikilink yields the long article title; a piped one already gives the nation.
+    """
+
+    import re
+
+    cleaned = re.sub(
+        r"\s+national\s+(football|soccer|association football)?\s*team$",
+        "",
+        name.strip(),
+        flags=re.IGNORECASE,
+    )
+    return cleaned.strip()
 
 
 def get_fbref_matches(
