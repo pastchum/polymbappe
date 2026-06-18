@@ -1,16 +1,75 @@
-# 2026 FIFA World Cup — official draw (December 5, 2025, Washington D.C.)
-# Team names use Kaggle/martj42 canonical spellings matching the matches table.
+# 2026 FIFA World Cup group-stage draw (final draw held 5 December 2025, Washington, D.C.).
+#
+# Sources:
+#   - Wikipedia: 2026 FIFA World Cup draw (https://en.wikipedia.org/wiki/2026_FIFA_World_Cup_draw)
+#   - FIFA official final draw results.
+#
+# 12 groups (A-L), 4 teams each (48 total). Team-name spellings match the data layer
+# (data/processed/matches.parquet, elo_snapshots.parquet) so Dixon-Coles strengths and
+# Elo join. Note: "Curaçao" uses the cedilla, "Turkey"/"Iran"/"DR Congo" per data spelling.
 
 groups:
-  A: ["Mexico", "South Africa", "South Korea", "Czech Republic"]
-  B: ["Canada", "Bosnia and Herzegovina", "Qatar", "Switzerland"]
-  C: ["Brazil", "Morocco", "Haiti", "Scotland"]
-  D: ["United States", "Paraguay", "Australia", "Turkey"]
-  E: ["Germany", "Curaçao", "Ivory Coast", "Ecuador"]
-  F: ["Netherlands", "Japan", "Sweden", "Tunisia"]
-  G: ["Belgium", "Egypt", "Iran", "New Zealand"]
-  H: ["Spain", "Cape Verde", "Saudi Arabia", "Uruguay"]
-  I: ["France", "Senegal", "Iraq", "Norway"]
-  J: ["Argentina", "Algeria", "Austria", "Jordan"]
-  K: ["Portugal", "DR Congo", "Uzbekistan", "Colombia"]
-  L: ["England", "Croatia", "Ghana", "Panama"]
+  A: [Mexico, South Africa, South Korea, Czech Republic]
+  B: [Canada, Bosnia and Herzegovina, Qatar, Switzerland]
+  C: [Brazil, Morocco, Haiti, Scotland]
+  D: [United States, Paraguay, Australia, Turkey]
+  E: [Germany, Curaçao, Ivory Coast, Ecuador]
+  F: [Netherlands, Japan, Sweden, Tunisia]
+  G: [Belgium, Egypt, Iran, New Zealand]
+  H: [Spain, Cape Verde, Saudi Arabia, Uruguay]
+  I: [France, Senegal, Iraq, Norway]
+  J: [Argentina, Algeria, Austria, Jordan]
+  K: [Portugal, DR Congo, Uzbekistan, Colombia]
+  L: [England, Croatia, Ghana, Panama]
+
+# Latest per-team Elo rating from data/processed/elo_snapshots.parquet (knockout upset
+# floor / pot seeding). All 48 drawn teams have a rating.
+elo:
+  Mexico: 1791.6
+  South Africa: 1613.7
+  South Korea: 1782.5
+  Czech Republic: 1710.9
+  Canada: 1751.2
+  Bosnia and Herzegovina: 1588.2
+  Qatar: 1553.9
+  Switzerland: 1801.8
+  Brazil: 1927.1
+  Morocco: 1815.8
+  Haiti: 1586.9
+  Scotland: 1687.2
+  United States: 1708.5
+  Paraguay: 1767.3
+  Australia: 1760.3
+  Turkey: 1795.6
+  Germany: 1864.0
+  Curaçao: 1501.2
+  Ivory Coast: 1727.0
+  Ecuador: 1843.8
+  Netherlands: 1844.2
+  Japan: 1836.3
+  Sweden: 1698.9
+  Tunisia: 1701.3
+  Belgium: 1853.7
+  Egypt: 1732.7
+  Iran: 1791.9
+  New Zealand: 1622.3
+  Spain: 1976.4
+  Cape Verde: 1602.2
+  Saudi Arabia: 1623.4
+  Uruguay: 1850.7
+  France: 1946.3
+  Senegal: 1807.8
+  Iraq: 1662.1
+  Norway: 1746.4
+  Argentina: 1991.2
+  Algeria: 1790.9
+  Austria: 1761.3
+  Jordan: 1649.1
+  Portugal: 1891.5
+  DR Congo: 1645.3
+  Uzbekistan: 1700.4
+  Colombia: 1905.4
+  England: 1877.0
+  Croatia: 1837.8
+  Ghana: 1604.3
+  Panama: 1713.1
